@@ -89,7 +89,7 @@ __asm__ ("\
          .text\n\
          .align 4\n\
 _call_with_stack:\n\
-         mov   sp,r1;\n\
+         mov   sp,r1\n\
          b     _enter_task;\n\
          ");
 #elif defined(__arm64__)
