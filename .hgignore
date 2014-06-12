@@ -1,0 +1,4 @@
+syntax: glob
+*~
+*/xcuserdata/*
+.DS_Store
