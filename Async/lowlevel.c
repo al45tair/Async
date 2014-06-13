@@ -305,7 +305,6 @@ async_wake(async_task_t task)
 
   if (owner->dispatch_q) {
     dispatch_async (owner->dispatch_q, ^{
-      printf("Scheduling on queue\n");
       while (async_run_next());
     });
   } else if (owner->source) {
