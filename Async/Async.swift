@@ -8,6 +8,7 @@
 
 import Foundation
 import Swift
+import Darwin
 
 /* This is just so we can use the nice async { } syntax. */
 func async(block: (Async.Task<Void>) -> ()) -> Async.Task<Void> {
@@ -58,14 +59,14 @@ struct Async {
     }
     
     init(block: (Task) -> T) {
-      task = async_call(8192) {
+      task = async_call {
         self.result = [block(self)]
         return 0
       }
     }
     
     init(block: () -> T) {
-      task = async_call(8192) {
+      task = async_call {
         self.result = [block()]
         return 0
       }
@@ -84,7 +85,7 @@ struct Async {
   class VoidTask<T> : Task<T> {
     init(block: (VoidTask) -> ()) {
       super.init()
-      task = async_call(8192) {
+      task = async_call {
         block(self)
         return 0
       }
@@ -92,7 +93,7 @@ struct Async {
     
     init(block: () -> ()) {
       super.init()
-      task = async_call(8192) {
+      task = async_call {
         block()
         return 0
       }

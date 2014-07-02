@@ -14,14 +14,33 @@
 
 #include "lowlevel.h"
 
+#define ASYNC_STACK_SIZE 16384
+#define ASYNC_POOL_SIZE  (32 * ASYNC_STACK_SIZE)
+
+struct async_stack {
+  struct async_stack *next;
+};
+
+struct async_arena {
+  struct async_arena *next;
+};
+
 struct async_thread {
-  pthread_mutex_t    q_mutex;
-  pthread_cond_t     q_cond;
-  struct async_task *ready_q;
-  struct async_task *current_task;
-  dispatch_queue_t   dispatch_q;
-  CFRunLoopSourceRef source;
-  CFRunLoopRef       runloop;
+  pthread_mutex_t     q_mutex;
+  pthread_cond_t      q_cond;
+  struct async_task  *ready_q;
+  struct async_task  *current_task;
+  dispatch_queue_t    dispatch_q;
+  CFRunLoopSourceRef  source;
+  CFRunLoopRef        runloop;
+  
+  struct async_arena *arenas;
+  
+  struct async_arena *current_arena;
+  uint8_t            *arena_ptr;
+  uint8_t            *arena_end;
+  
+  struct async_stack *free_stacks;
 };
 
 struct async_task {
@@ -31,7 +50,6 @@ struct async_task {
   int64_t              result;
   jmp_buf              buf;
   void                *stack_base;
-  size_t               stack_size;
   void                *arg;
   int64_t             (*entry_point)(void *arg);
   CFTypeRef           retained;
@@ -49,6 +67,8 @@ static bool async_run_all_blocking(void);
 static void async_perform(void *info);
 static struct async_thread *async_current_thread(void);
 static void async_switch_to(async_task_t task);
+static void *async_alloc_stack(struct async_thread *thread);
+static void async_release_stack(struct async_thread *thread, void *base);
 
 void enter_task(async_task_t task) {
   task->result = task->entry_point (task->arg);
@@ -118,8 +138,16 @@ async_teardown(void *arg)
 {
   struct async_thread *thread = (struct async_thread *)arg;
   
+  for (struct async_arena *arena = thread->arenas, *next_arena;
+       arena;
+       arena = next_arena) {
+    next_arena = arena->next;
+    munmap (arena, ASYNC_POOL_SIZE);
+  }
+  
   pthread_mutex_destroy (&thread->q_mutex);
   pthread_cond_destroy (&thread->q_cond);
+  
   free (thread);
 }
 
@@ -198,7 +226,6 @@ async_switch_to(async_task_t task)
 
 static async_task_t
 async_call_fn_impl(void *arg,
-                   size_t stack_size,
                    int64_t (*pfn)(void *arg),
                    CFTypeRef retained)
 {
@@ -216,13 +243,10 @@ async_call_fn_impl(void *arg,
   thread->current_task = (async_task_t)task;
   
   // Call with a new stack
-  volatile size_t size = stack_size;
-  volatile void *base = mmap (NULL, size, PROT_READ|PROT_WRITE,
-                              MAP_ANON|MAP_PRIVATE, -1, 0);
-  void *top = (char *)base + size;
+  volatile void *base = async_alloc_stack(thread);
+  void *top = (char *)base + ASYNC_STACK_SIZE;
   
   task->stack_base = (void *)base;
-  task->stack_size = size;
   task->entry_point = pfn;
   task->arg = arg;
   task->retained = retained ? CFRetain(retained) : NULL;
@@ -233,17 +257,15 @@ async_call_fn_impl(void *arg,
 
 async_task_t
 async_call_fn(void *arg,
-              size_t stack_size,
               int64_t (*pfn)(void *arg))
 {
-  return async_call_fn_impl (arg, stack_size, pfn, NULL);
+  return async_call_fn_impl (arg, pfn, NULL);
 }
 
 async_task_t
-async_call(size_t stack_size,
-           int64_t (^blk)(void))
+async_call(int64_t (^blk)(void))
 {
-  return async_call_fn_impl (blk, stack_size, call_block, blk);
+  return async_call_fn_impl (blk, call_block, blk);
 }
 
 int64_t async_await(async_task_t t)
@@ -272,7 +294,7 @@ int64_t async_await(async_task_t t)
     }
   }
   
-  munmap (task->stack_base, task->stack_size);
+  async_release_stack((struct async_thread *)thread, task->stack_base);
   if (task->retained)
     CFRelease (task->retained);
   result = task->result;
@@ -384,4 +406,59 @@ bool
 async_done(async_task_t task)
 {
   return task->done;
+}
+
+static void *
+async_alloc_stack(struct async_thread *thread)
+{
+  uint8_t *base;
+  
+  if (thread->free_stacks) {
+    struct async_stack *stack = thread->free_stacks->next;
+    if (stack == thread->free_stacks)
+      thread->free_stacks = NULL;
+    else
+      thread->free_stacks->next = stack->next;
+    
+    base = (uint8_t *)stack - 4096;
+    
+    return base;
+  }
+  
+  if (thread->arena_ptr + ASYNC_STACK_SIZE >= thread->arena_end) {
+    struct async_arena *the_arena;
+    
+    thread->arena_ptr = mmap (NULL, ASYNC_POOL_SIZE,
+                               PROT_READ|PROT_WRITE,
+                               MAP_ANON|MAP_PRIVATE, -1, 0);
+    thread->arena_end = thread->arena_ptr;
+    
+    the_arena = (struct async_arena *)(thread->arena_ptr);
+    the_arena->next = thread->current_arena;
+    thread->current_arena = the_arena;
+  }
+  
+  base = thread->arena_ptr;
+  thread->arena_ptr += ASYNC_STACK_SIZE;
+  
+  /* Protect the bottom page; this is sufficient to cause stack overruns to
+     crash the process, without forcing us to call mprotect() to read the
+     header. */
+  mprotect (base, 4096, PROT_READ);
+  
+  return base;
+}
+
+static void
+async_release_stack(struct async_thread *thread, void *base)
+{
+  struct async_stack *stack = (struct async_stack *)((uint8_t *)base + 4096);
+  
+  if (thread->free_stacks) {
+    stack->next = thread->free_stacks->next;
+    thread->free_stacks->next = stack;
+  } else {
+    stack->next = stack;
+    thread->free_stacks = stack;
+  }
 }

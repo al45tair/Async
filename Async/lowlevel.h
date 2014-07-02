@@ -42,12 +42,10 @@ void async_schedule_in_runloop(CFRunLoopRef runLoop);
 void async_unschedule(void);
 
 /* Call a block; this also works for Swift functions. */
-async_task_t async_call(size_t stack_size,
-                        int64_t (^blk)(void));
+async_task_t async_call(int64_t (^blk)(void));
 
 /* Call a function, passing in the specified argument */
 async_task_t async_call_fn(void *arg,
-                           size_t stack_size,
                            int64_t (*blk)(void *arg));
 
 /* Wait for a given async task to complete */
