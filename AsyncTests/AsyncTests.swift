@@ -156,4 +156,26 @@ class AsyncTests: XCTestCase {
     
     println("Test complete")
   }
+
+  func hiresTime() -> Double {
+    var tv : timeval = timeval(tv_sec: 0, tv_usec: 0)
+    gettimeofday(&tv, nil)
+    return Double(tv.tv_sec) + 1.0e-6 * Double(tv.tv_usec);
+  }
+  
+  func testPerformance() {
+    println("Timing")
+    
+    let count = 1000000
+    let start = hiresTime()
+    for i in 1...count {
+      let task = async {
+      }
+      
+      await(task)
+    }
+    let elapsed = hiresTime() - start
+    
+    println("\(elapsed / Double(count))s per async/await")
+  }
 }
