@@ -9,6 +9,7 @@
 import XCTest
 import Dispatch
 import Async
+import Darwin
 
 class AsyncTests: XCTestCase {
     
