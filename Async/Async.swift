@@ -35,7 +35,7 @@ func await(task: Async.Task<Void>) {
 func await<T>(task: Async.Task<T>) -> T {
   async_await(task.task)
   task.task = nil
-  return task.result[0]
+  return task.result
 }
 
 struct Async {
@@ -48,7 +48,7 @@ struct Async {
 
   class Task<T> {
     var task : async_task_t = nil
-    var result : T[]!
+    var result : T!
     var done : Bool {
       get {
         return !task || async_done(task)
@@ -60,14 +60,14 @@ struct Async {
     
     init(block: (Task) -> T) {
       task = async_call {
-        self.result = [block(self)]
+        self.result = block(self)
         return 0
       }
     }
     
     init(block: () -> T) {
       task = async_call {
-        self.result = [block()]
+        self.result = block()
         return 0
       }
     }
