@@ -39,13 +39,6 @@ func await<T>(task: Async.Task<T>) -> T {
 }
 
 struct Async {
-  /* We should really use T?, but that causes a compiler error about non-fixed
-     class layouts:
-
-      LLVM ERROR: unimplemented IRGen feature! non-fixed class layout
-
-     so instead we use an array. */
-
   class Task<T> {
     var task : async_task_t = nil
     var result : T!
