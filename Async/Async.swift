@@ -11,111 +11,89 @@ import Swift
 import Darwin
 
 /* This is just so we can use the nice async { } syntax. */
-func async(block: (Async.Task<Void>) -> ()) -> Async.Task<Void> {
-  return Async.VoidTask(block)
+public func async(block: (Task<Void>) -> Void) -> Task<Void> {
+  return Task<Void>(block)
 }
 
-func async(block: () -> ()) -> Async.Task<Void> {
-  return Async.VoidTask(block)
+public func async(block: () -> Void) -> Task<Void> {
+  return Task<Void>(block)
 }
 
-func async<T>(block: (Async.Task<T>) -> T) -> Async.Task<T> {
-  return Async.Task<T>(block)
+public func async<T>(block: (Task<T>) -> T) -> Task<T> {
+  return Task<T>(block)
 }
 
-func async<T>(block: () -> T) -> Async.Task<T> {
-  return Async.Task<T>(block)
+public func async<T>(block: () -> T) -> Task<T> {
+  return Task<T>(block)
 }
 
-func await(task: Async.Task<Void>) {
-  async_await(task.task)
+public func await(task: Task<Void>) {
+  async_ll_await(task.task)
   task.task = nil
 }
 
-func await<T>(task: Async.Task<T>) -> T {
-  async_await(task.task)
+public func await<T>(task: Task<T>) -> T {
+  async_ll_await(task.task)
   task.task = nil
   return task.result
 }
 
-struct Async {
-  class Task<T> {
-    var task : async_task_t = nil
-    var result : T!
-    var done : Bool {
-      get {
-        return !task || async_done(task)
-      }
-    }
-    
-    init() {
-    }
-    
-    init(block: (Task) -> T) {
-      task = async_call {
-        self.result = block(self)
-        return 0
-      }
-    }
-    
-    init(block: () -> T) {
-      task = async_call {
-        self.result = block()
-        return 0
-      }
-    }
-    
-    deinit {
-      if task {
-        async_await(task)
-        task = nil
-      }
+public class Task<T> {
+  internal var task : async_ll_task_t = nil
+  internal var result : T!
+  public var done : Bool {
+    get {
+      return task != nil || async_ll_done(task)
     }
   }
-
-  /* This is unfortunately necessary because of the array hack; an array of
-     void[] type causes a crash when you assign to it. */
-  class VoidTask<T> : Task<T> {
-    init(block: (VoidTask) -> ()) {
-      super.init()
-      task = async_call {
-        block(self)
-        return 0
-      }
-    }
-    
-    init(block: () -> ()) {
-      super.init()
-      task = async_call {
-        block()
-        return 0
-      }
+  
+  public init() {
+  }
+  
+  public init(block: (Task) -> T) {
+    task = async_ll_call {
+      self.result = block(self)
+      return 0
     }
   }
-
-  static func suspend() {
-    async_suspend()
+  
+  public init(block: () -> T) {
+    task = async_ll_call {
+      self.result = block()
+      return 0
+    }
   }
-
-  static func wake<T>(task: Task<T>) {
-    async_wake(task.task)
+  
+  deinit {
+    if task != nil {
+      async_ll_await(task)
+      task = nil
+    }
   }
+}
 
-  /* This should only ever be called with dispatch_get_main_queue(); it absolutely
-     requires that the queue uses only a single thread. */
-  static func schedule(q: dispatch_queue_t) {
-    async_schedule_in_queue(q)
-  }
+public func suspend() {
+  async_ll_suspend()
+}
 
-  static func schedule(runLoop: CFRunLoop) {
-    async_schedule_in_runloop(runLoop)
-  }
+public func wake<T>(task: Task<T>) {
+  async_ll_wake(task.task)
+}
 
-  static func schedule(runLoop: NSRunLoop) {
-    async_schedule_in_runloop(runLoop.getCFRunLoop())
-  }
+/* This should only ever be called with dispatch_get_main_queue(); it absolutely
+   requires that the queue uses only a single thread. */
+public func schedule(q: dispatch_queue_t) {
+  async_ll_schedule_in_queue(q)
+}
 
-  static func unschedule() {
-    async_unschedule()
-  }
+public func schedule(runLoop: CFRunLoop) {
+  async_ll_schedule_in_runloop(runLoop)
+}
+
+public func schedule(runLoop: NSRunLoop) {
+  async_ll_schedule_in_runloop(runLoop.getCFRunLoop())
+}
+
+public func unschedule() {
+  async_ll_unschedule()
 }

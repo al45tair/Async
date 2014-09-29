@@ -11,9 +11,8 @@
 		D36B7C8F1949ABD00010D438 /* Async.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D36B7C831949ABCF0010D438 /* Async.framework */; };
 		D36B7C961949ABD00010D438 /* AsyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36B7C951949ABD00010D438 /* AsyncTests.swift */; };
 		D36B7CA21949AC180010D438 /* lowlevel.c in Sources */ = {isa = PBXBuildFile; fileRef = D36B7CA01949AC180010D438 /* lowlevel.c */; };
-		D36B7CA41949AC1E0010D438 /* lowlevel.h in Headers */ = {isa = PBXBuildFile; fileRef = D36B7CA11949AC180010D438 /* lowlevel.h */; };
+		D36B7CA41949AC1E0010D438 /* lowlevel.h in Headers */ = {isa = PBXBuildFile; fileRef = D36B7CA11949AC180010D438 /* lowlevel.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D36B7CA61949AC4A0010D438 /* Async.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36B7CA51949AC4A0010D438 /* Async.swift */; };
-		D36B7CA81949AC770010D438 /* bridging.h in Headers */ = {isa = PBXBuildFile; fileRef = D36B7CA71949AC770010D438 /* bridging.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,7 +35,6 @@
 		D36B7CA01949AC180010D438 /* lowlevel.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lowlevel.c; sourceTree = "<group>"; };
 		D36B7CA11949AC180010D438 /* lowlevel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lowlevel.h; sourceTree = "<group>"; };
 		D36B7CA51949AC4A0010D438 /* Async.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Async.swift; sourceTree = "<group>"; };
-		D36B7CA71949AC770010D438 /* bridging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bridging.h; sourceTree = "<group>"; };
 		D36B7CA91949EBA60010D438 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -81,7 +79,6 @@
 		D36B7C851949ABCF0010D438 /* Async */ = {
 			isa = PBXGroup;
 			children = (
-				D36B7CA71949AC770010D438 /* bridging.h */,
 				D36B7C9F1949AC0A0010D438 /* Low Level */,
 				D36B7C881949ABCF0010D438 /* Async.h */,
 				D36B7CA51949AC4A0010D438 /* Async.swift */,
@@ -133,7 +130,6 @@
 			files = (
 				D36B7CA41949AC1E0010D438 /* lowlevel.h in Headers */,
 				D36B7C891949ABCF0010D438 /* Async.h in Headers */,
-				D36B7CA81949AC770010D438 /* bridging.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,7 +351,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = $SRCROOT/Async/bridging.h;
 			};
 			name = Debug;
 		};
@@ -375,7 +370,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = $SRCROOT/Async/bridging.h;
 			};
 			name = Release;
 		};
