@@ -59,13 +59,13 @@ class AsyncTests: XCTestCase {
   func testSuspend() {
     let task = async { (t : Async.Task<Int>) -> Int in
       /* Wake in 2s */
-      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2000000000),
-        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0)) {
+      let globalQueue = DispatchQueue.global(qos: .background)
+      globalQueue.asyncAfter(deadline: .now() + 2.0) {
         Async.wake(t)
       }
-      println("Going to suspend")
+      print("Going to suspend")
       Async.suspend()
-      println("Finished")
+      print("Finished")
       return 7
     }
     
@@ -79,83 +79,72 @@ class AsyncTests: XCTestCase {
       let task = async { () -> Int in
         let subtask = async { (t : Async.Task<()>) -> () in
           /* Wake in 2s */
-          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500000000),
-            dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0)) {
-              println("Waking")
-              Async.wake(t)
+          let globalQueue = DispatchQueue.global(qos: .background)
+          globalQueue.asyncAfter(deadline: .now() + 2.0) {
+            Async.wake(t)
           }
-          println("Going to suspend")
+          print("Going to suspend")
           Async.suspend()
-          println("Finished")
+          print("Finished")
         }
         
-        println("Waiting for subtask")
+        print("Waiting for subtask")
         await(subtask)
-        println("Subtask complete")
+        print("Subtask complete")
         
         return 6
       }
       
-      println("Should return straight away")
+      print("Should return straight away")
       
       let result = await(task)
       XCTAssertEqual(result, 6, "Should return 6")
       
-      println("Finished now")
+      print("Finished now")
     }
     
     return outer
   }
   
-  /* CFRunLoopGetCurrent() is not yet fixed in the iOS 8 headers */
-  func fixupRunLoop(rl: CFRunLoop) -> CFRunLoop {
-    return rl
-  }
-  
-  func fixupRunLoop(rl: Unmanaged<CFRunLoop>) -> CFRunLoop {
-    return rl.takeUnretainedValue()
-  }
-  
   func testWithRunLoop() {
-    var runLoop: CFRunLoop = fixupRunLoop(CFRunLoopGetCurrent());
+    let runLoop: CFRunLoop = CFRunLoopGetCurrent();
     
-    Async.schedule(runLoop)
+    Async.schedule(runLoop: runLoop)
     
     let task = runAsync()
     
-    println("Starting run loop")
+    print("Starting run loop")
     
-    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 4.0, 0)
+    CFRunLoopRunInMode(CFRunLoopMode.defaultMode, 4.0, false)
     
-    println("Finished run loop")
+    print("Finished run loop")
     
     XCTAssert(task.done, "Task should have finished")
     
-    println("Test complete")
+    print("Test complete")
   }
   
   func testWithDispatchQueue() {
-    var queue = dispatch_get_main_queue()
-    var runLoop = CFRunLoopGetCurrent();
+    let queue = DispatchQueue.main
     var task : Async.Task<Void>!
     
-    Async.schedule(queue)
+    Async.schedule(queue: queue)
     
-    dispatch_async(queue) {
-      println("Block started")
+    queue.async {
+      print("Block started")
       task = self.runAsync()
-      println("Block complete")
+      print("Block complete")
     }
 
-    println("Starting run loop")
+    print("Starting run loop")
     
-    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 4.0, 0)
+    CFRunLoopRunInMode(CFRunLoopMode.defaultMode, 4.0, false)
     
-    println("Finished run loop")
+    print("Finished run loop")
 
     XCTAssert(task.done, "Task should have finished")
     
-    println("Test complete")
+    print("Test complete")
   }
 
   func hiresTime() -> Double {
@@ -165,11 +154,11 @@ class AsyncTests: XCTestCase {
   }
   
   func testPerformance() {
-    println("Timing")
+    print("Timing")
     
     let count = 1000000
     let start = hiresTime()
-    for i in 1...count {
+    for _ in 1...count {
       let task = async {
       }
       
@@ -177,6 +166,7 @@ class AsyncTests: XCTestCase {
     }
     let elapsed = hiresTime() - start
     
-    println("\(elapsed / Double(count))s per async/await")
+    print("\(elapsed / Double(count))s per async/await")
   }
+  
 }

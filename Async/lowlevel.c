@@ -14,7 +14,7 @@
 
 #include "lowlevel.h"
 
-#define ASYNC_STACK_SIZE 16384
+#define ASYNC_STACK_SIZE 32768
 #define ASYNC_POOL_SIZE  (32 * ASYNC_STACK_SIZE)
 
 struct async_ll_stack {
@@ -58,7 +58,7 @@ struct async_ll_task {
 };
 
 static int64_t call_block(void *arg) {
-  int64_t (^blk)() = (int64_t (^)())arg;
+  int64_t (^blk)(void) = (int64_t (^)(void))arg;
   return blk();
 }
 

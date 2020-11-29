@@ -1,6 +1,11 @@
 Async Swift
 ===========
 
+**THIS IS A TOY IMPLEMENTATION AND SHOULD NOT BE USED IN PRODUCTION**
+
+(This was originally writen for Swift 1.x; I have updated the code for
+ Swift 5 compatibility, but it's still a toy.)
+
 This framework implements C#-like async/await primitives in Swift.  Owing to
 some problems with the current operating system bindings, together with the
 need for a tiny bit of assembly language to make this work, the guts of the
@@ -47,25 +52,23 @@ that is:
 
 ~~~~
 let task = async { () -> () in
-  let fetch = async { (t: Task<NSData>) -> NSData in
-    let req = NSURLRequest(URL: NSURL.URLWithString("http://www.google.com"))
-    let queue = NSOperationQueue.mainQueue()
-    var data = NSData!
-    NSURLConnection.sendAsynchronousRequest(req,
-                                            queue:queue,
-      completionHandler:{ (r: NSURLResponse!, d: NSData!, error: NSError!) -> Void in
-        data = d
-        Async.wake(t)
-      })
+  let fetch = async { (t: Task<Data>) -> Data in
+    var data : Data?
+    let session = URLSession(configuration: .default)
+    let task = session.dataTask(with: URL(string: "http://www.google.com")!) {
+      (d: Data!, r: URLResponse!, error: Error!) -> Void in
+      data = d
+      Async.wake(t)
+    }
+	task.resume()
     Async.suspend()
     return data!
   }
 
   let data = await(fetch)
-  let str = NSString(bytes: data.bytes, length: data.length,
-                     encoding: NSUTF8StringEncoding)
+  let str = String(decoding: data, as: UTF8.self)
 
-  println(str)
+  print(str)
 }
 ~~~~
 
@@ -74,7 +77,7 @@ code, namely at some point you need to bind the Async module to the run loop
 with
 
 ~~~~
-Async.schedule(NSRunLoop.currentRunLoop())
+Async.schedule(runLoop: RunLoop.current)
 ~~~~
 
 After doing that, if you invoke the code above, you’ll find that it fetches
@@ -102,7 +105,7 @@ run asynchronous code on the main thread, you can tell the framework that you
 want it to attach to the run loop, as shown before, with
 
 ~~~~
-Async.schedule(NSRunLoop.currentRunLoop())
+Async.schedule(runLoop: RunLoop.current)
 ~~~~
 
 This also works for `CFRunLoopRef`, and it will work with the main dispatch

@@ -10,7 +10,6 @@
 #define LOWLEVEL_H_
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <inttypes.h>
 #include <stdbool.h>
 #include <setjmp.h>
 
